@@ -8,7 +8,7 @@ import type { CategorySlug, Product } from "@/types";
  */
 
 export const API_BASE =
-  import.meta.env.VITE_API_URL ?? "http://127.0.0.1:8000/api/v1";
+  import.meta.env.VITE_API_URL || "http://127.0.0.1:8000/api/v1";
 
 const TOKEN_KEY = "batik-jogja-admin-token";
 
@@ -61,15 +61,23 @@ async function request<T>(
       headers: { ...headers, ...(init.headers as Record<string, string>) },
       signal: ctrl.signal,
     });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) {
+    // Guard: bila API_BASE kosong / salah, permintaan bisa menabrak origin
+    // situs sendiri dan SPA fallback membalas index.html (HTTP 200, bukan
+    // JSON). Jangan pernah memperlakukannya sebagai respons API yang sah.
+    const contentType = res.headers.get("content-type") ?? "";
+    const isJson = contentType.includes("application/json");
+    if (!res.ok || !isJson) {
+      const data = isJson
+        ? ((await res.json().catch(() => ({}))) as { message?: string })
+        : {};
       const msg =
-        (data as { message?: string }).message ??
+        data.message ??
         (res.status === 401
           ? "Email atau kata sandi salah."
           : `Server mengembalikan ${res.status}.`);
-      throw new ApiError(res.status, msg);
+      throw new ApiError(res.ok ? 0 : res.status, msg);
     }
+    const data = await res.json().catch(() => ({}));
     return data as T;
   } catch (e) {
     if (e instanceof ApiError) throw e;
@@ -118,7 +126,9 @@ export function toProduct(raw: ApiProductRaw): Product {
     slug: raw.slug,
     name: raw.name,
     category: (raw.category?.slug ?? "wanita") as CategorySlug,
-    price: raw.price,
+    // Defensif: API yang cacat / bukan JSON bisa membuat price undefined,
+    // dan itu menggagalkan formatIDR (toLocaleString) di seluruh UI.
+    price: Number.isFinite(Number(raw.price)) ? Number(raw.price) : 0,
     originalPrice: raw.original_price ?? undefined,
     image: raw.image,
     isNew: raw.is_new,

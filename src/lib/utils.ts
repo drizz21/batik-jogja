@@ -8,5 +8,6 @@ export function cn(...inputs: ClassValue[]) {
 
 /** Format angka ke Rupiah: 585000 -> "Rp585.000" (gaya penulisan di desain). */
 export function formatIDR(value: number): string {
-  return 'Rp' + value.toLocaleString('id-ID');
+  const n = Number(value);
+  return 'Rp' + (Number.isFinite(n) ? n : 0).toLocaleString('id-ID');
 }
