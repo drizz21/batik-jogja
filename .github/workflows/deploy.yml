@@ -1,0 +1,48 @@
+# CI/CD: build storefront lalu deploy ke Cloudflare Pages.
+#
+# Alur: setiap push ke `main` -> install deps -> build Vite -> deploy
+# folder `dist/` ke project Cloudflare Pages `batik-jogja`.
+#
+# Rahasia yang WAJIB diisi di GitHub repo -> Settings -> Secrets and
+# variables -> Actions (lihat README bagian CI/CD):
+#   CLOUDFLARE_API_TOKEN  - token API Cloudflare (permission: Cloudflare Pages:Edit)
+#   CLOUDFLARE_ACCOUNT_ID - Account ID Cloudflare
+name: Deploy to Cloudflare Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      deployments: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+        env:
+          # Backend API belum di-deploy; biarkan default (mock katalog).
+          # Set secret VITE_API_URL bila backend sudah live, lalu hapus baris ini.
+          VITE_API_URL: ${{ secrets.VITE_API_URL }}
+
+      - name: Publish to Cloudflare Pages
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy dist --project-name=batik-jogja --branch=main
