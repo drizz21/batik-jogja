@@ -79,3 +79,5 @@ npx wrangler pages deploy dist --project-name batik-jogja --branch main
 | `src/lib/api.ts` | Klien REST ke backend Laravel |
 | `public/images/` | Aset foto lokal (38 berkas) |
 | `public/_redirects` | SPA fallback (`/* /index.html 200`) untuk Cloudflare Pages |
+
+<!-- Deploy terakhir diuji: CI/CD push-to-deploy aktif -->
